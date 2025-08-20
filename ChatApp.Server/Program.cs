@@ -1,4 +1,5 @@
 using ChatApp.Server.DB;
+using ChatApp.Server.Services;
 using Microsoft.EntityFrameworkCore;
 
 DotNetEnv.Env.Load("PostgreSQL.env");
@@ -14,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+builder.Services.AddScoped<IMessageService, MessageService>();
 
 builder.Services.AddDbContext<ChatDbContext>(options =>
     options.UseNpgsql(connectionString));
