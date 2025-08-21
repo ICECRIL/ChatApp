@@ -1,4 +1,5 @@
 using ChatApp.Server.DB;
+using ChatApp.Server.Hubs;
 using ChatApp.Server.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
+builder.Services.AddSignalRCore();
 builder.Services.AddScoped<IMessageService, MessageService>();
 
 builder.Services.AddDbContext<ChatDbContext>(options =>
@@ -23,7 +26,7 @@ builder.Services.AddDbContext<ChatDbContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Vue",
-        policy => policy.WithOrigins("https://localhost:52118")
+        policy => policy.WithOrigins("https://localhost:64930")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
@@ -46,4 +49,5 @@ app.UseCors("Vue");
 app.UseAuthorization();
 app.MapControllers();
 app.MapFallbackToFile("/index.html");
+app.MapHub<ChatHub>("/chatHub");
 app.Run();

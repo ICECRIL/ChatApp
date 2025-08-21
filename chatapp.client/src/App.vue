@@ -1,8 +1,19 @@
-<script setup>
+<script>
+import { defineComponent } from 'vue';
+import chatInterface from './components/chat-interface.vue';
+
+export default defineComponent({
+  components: {
+    chatInterface
+  }
+})
 </script>
 
 <template>
-  <p></p>
+  <div>
+    <chat-interface></chat-interface>
+  </div>
+
 </template>
 
 <style scoped></style>
