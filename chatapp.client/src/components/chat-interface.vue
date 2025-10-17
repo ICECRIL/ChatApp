@@ -11,6 +11,12 @@
             <div class="chat-bubble-header">
               <span class="chat-user">{{ message.user }}</span>
               <span class="chat-time">{{ formatTime(message.createdAt) }}</span>
+              <button class="chat-delete-message-btn" @click="deleteMessage(message.id)" title="Удалить сообщение">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                    fill="currentColor" />
+                </svg>
+              </button>
             </div>
             <div class="chat-text">{{ message.text }}</div>
           </div>
@@ -20,6 +26,12 @@
         <input class="chat-user-input" type="text" v-model="userInput" placeholder="Ваше имя" maxlength="20" />
         <input class="chat-message-input" type="text" v-model="messageInput" placeholder="Введите сообщение..."
           maxlength="4000" @keyup.enter="sendMessage" />
+        <button class="chat-clear-btn" @click="clearHistory" title="Очистить историю">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+              fill="currentColor" />
+          </svg>
+        </button>
         <button class="chat-send-btn" @click="sendMessage" :disabled="!canSend">
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
             <path d="M3 20v-6l13-2-13-2V4l18 8-18 8z" fill="currentColor" />
@@ -61,6 +73,7 @@ export default {
 
       connection.on("ReceiveMessage", (message) => {
         messages.value.push({
+          id: message.id,
           user: message.userName,
           text: message.content,
           createdAt: message.createdAt
@@ -71,17 +84,47 @@ export default {
         messages.value = history
           .reverse()
           .map(msg => ({
+            id: msg.id,
             user: msg.userName,
             text: msg.content,
             createdAt: msg.createdAt
           }));
       });
 
+      connection.on("MessageDeleted", (messageId) => {
+        messages.value = messages.value.filter(msg => msg.id !== messageId);
+      });
+
+      connection.on("HistoryCleared", () => {
+        messages.value = [];
+      });
+
       try {
         await connection.start();
         await connection.invoke("GetHistory");
-      } catch {
+      } catch (err) {
+        console.error("Ошибка подключения:", err);
         setTimeout(startConnection, 5000);
+      }
+    };
+
+    const clearHistory = async () => {
+      if (connection && confirm('Вы уверены, что хотите очистить всю историю чата?')) {
+        try {
+          await connection.invoke("DeleteAllMessages");
+        } catch (err) {
+          console.error("Ошибка очистки истории:", err);
+        }
+      }
+    };
+
+    const deleteMessage = async (messageId) => {
+      if (connection && confirm('Удалить это сообщение?')) {
+        try {
+          await connection.invoke("DeleteMessage", messageId);
+        } catch (err) {
+          console.error("Ошибка удаления сообщения:", err);
+        }
       }
     };
 
@@ -90,7 +133,6 @@ export default {
         try {
           await connection.invoke("SendMessage", userInput.value.trim(), messageInput.value.trim());
           messageInput.value = '';
-
           await nextTick();
           scrollToBottom();
         } catch (err) {
@@ -123,6 +165,8 @@ export default {
       messageInput,
       messages,
       sendMessage,
+      clearHistory,
+      deleteMessage,
       messagesEnd,
       canSend,
       formatTime
@@ -182,14 +226,12 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Скрыть переполнение */
 }
 
 .chat-messages {
   flex: 1;
   padding: 18px;
   overflow-y: auto;
-  /* Автоматический скролл */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -212,12 +254,13 @@ export default {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 4px;
+  gap: 8px;
 }
 
 .chat-user {
   font-weight: bold;
   color: #b89b72;
-  margin-right: 8px;
+  margin-right: auto;
   font-size: 1rem;
 }
 
@@ -225,7 +268,7 @@ export default {
   color: #c2a77b;
   font-size: 0.75rem;
   font-style: italic;
-  margin-left: 8px;
+  white-space: nowrap;
 }
 
 .chat-text {
@@ -243,7 +286,6 @@ export default {
   border-top: 1.5px solid #f3e6d2;
   align-items: center;
   flex-shrink: 0;
-  /* Запретить сжатие */
 }
 
 .chat-user-input {
@@ -318,6 +360,48 @@ export default {
   color: #fff;
 }
 
+.chat-clear-btn {
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  min-width: 40px;
+}
+
+.chat-clear-btn:hover {
+  background: #ff5252;
+}
+
+.chat-delete-message-btn {
+  background: none;
+  border: none;
+  color: #c2a77b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-bubble:hover .chat-delete-message-btn {
+  opacity: 1;
+}
+
+.chat-delete-message-btn:hover {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+
 @media (max-width: 600px) {
   .chat-root {
     padding: 0;
@@ -337,6 +421,10 @@ export default {
 
   .chat-messages {
     padding: 12px;
+  }
+
+  .chat-delete-message-btn {
+    opacity: 1;
   }
 }
 </style>

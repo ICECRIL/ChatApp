@@ -18,7 +18,8 @@ namespace ChatApp.Server.Hubs
 
             var messageDto = new MessageDto
             {
-                Content = content,
+                Id = message.Id,
+                Content = message.Content,
                 UserName = userName,
                 CreatedAt = message.CreatedAt
             };
@@ -31,12 +32,25 @@ namespace ChatApp.Server.Hubs
             var messages = await _messageService.GetRecentMessagesAsync(50);
             var dto = messages.Select(m => new MessageDto
             {
+                Id = m.Id,
                 UserName = m.Sender.Name,
                 Content = m.Content,
                 CreatedAt = m.CreatedAt
             });
 
             await Clients.Caller.SendAsync("ReceiveHistory", dto);
+        }
+
+        public async Task DeleteAllMessages()
+        {
+            await _messageService.DeleteAllMessagesAsync();
+            await Clients.All.SendAsync("HistoryCleared");
+        }
+
+        public async Task DeleteMessage(Guid messageId)
+        {
+            await _messageService.DeleteMessageByIdAsync(messageId);
+            await Clients.All.SendAsync("MessageDeleted", messageId);
         }
     }
 }
